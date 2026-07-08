@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - ".github/workflows/ghcr_train_image.yml"
-      - "docker/Dockerfile.internal"
+      - "docker/Dockerfile.baidu"
       - "pyproject.toml"
       - "uv.lock"
       - "setup.py"
@@ -52,8 +52,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/Dockerfile.internal
+          file: ./docker/Dockerfile.baidu
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:train-gpu
+            ${{ env.IMAGE_NAME }}:train-gpu-ubuntu22.04
             ${{ env.IMAGE_NAME }}:train-gpu-${{ github.sha }}

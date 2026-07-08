@@ -1,0 +1,76 @@
+# Copyright 2025 The HuggingFace Inc. team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Baidu AIHC development-machine image.
+# Ubuntu 22.04 is used for platform compatibility, while Python 3.12 is
+# installed by uv because Ubuntu 22.04 does not ship python3.12 in apt.
+
+ARG CUDA_VERSION=12.8.1
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
+
+ARG PYTHON_VERSION=3.12
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    MUJOCO_GL=egl \
+    PATH=/lerobot/.venv/bin:/usr/local/bin:$PATH \
+    CUDA_VISIBLE_DEVICES=0 \
+    TEST_TYPE=single_gpu \
+    DEVICE=cuda \
+    UV_PYTHON_INSTALL_DIR=/opt/uv/python \
+    UV_LINK_MODE=copy
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    ffmpeg \
+    git \
+    libegl1 \
+    libgeos-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libusb-1.0-0-dev \
+    ninja-build \
+    pkg-config \
+    portaudio19-dev \
+    speech-dispatcher \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && uv python install ${PYTHON_VERSION} \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /lerobot
+
+ENV HOME=/root \
+    HF_HOME=/root/.cache/huggingface \
+    HF_LEROBOT_HOME=/root/.cache/huggingface/lerobot \
+    TORCH_HOME=/root/.cache/torch \
+    TRITON_CACHE_DIR=/root/.cache/triton
+
+RUN uv venv --python ${PYTHON_VERSION}
+
+COPY setup.py pyproject.toml uv.lock README.md MANIFEST.in ./
+COPY src/ src/
+
+RUN uv sync --locked --extra all --no-cache
+
+RUN if [ -f "/lerobot/.venv/lib/python${PYTHON_VERSION}/site-packages/triton/backends/nvidia/bin/ptxas" ]; then \
+        chmod +x "/lerobot/.venv/lib/python${PYTHON_VERSION}/site-packages/triton/backends/nvidia/bin/ptxas"; \
+    fi
+
+COPY . .
+
+CMD ["/bin/bash"]
