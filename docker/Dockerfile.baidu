@@ -67,6 +67,12 @@ COPY src/ src/
 
 RUN uv sync --locked --extra all --no-cache
 
+# Pre-cache the official SmolVLA base policy and its VLM backbone for fine-tuning.
+# These public Hugging Face repos are still addressed by their Hub IDs at runtime,
+# but the files are already present under HF_HOME inside the image.
+RUN hf download lerobot/smolvla_base --repo-type model \
+    && hf download HuggingFaceTB/SmolVLM2-500M-Video-Instruct --repo-type model
+
 RUN if [ -f "/lerobot/.venv/lib/python${PYTHON_VERSION}/site-packages/triton/backends/nvidia/bin/ptxas" ]; then \
         chmod +x "/lerobot/.venv/lib/python${PYTHON_VERSION}/site-packages/triton/backends/nvidia/bin/ptxas"; \
     fi
